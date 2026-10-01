@@ -25,6 +25,7 @@ class AlignResult:
 class Aligner:
     def __init__(self, template: np.ndarray, n_features: int = 4000):
         self.shape = template.shape[:2]
+        self.width = template.shape[1]
         self.orb = cv2.ORB_create(n_features)
         self.matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
         self.kp_t, self.des_t = self._features(template)
@@ -35,8 +36,17 @@ class Aligner:
         small = cv2.resize(img, None, fx=SCALE, fy=SCALE, interpolation=cv2.INTER_AREA)
         return self.orb.detectAndCompute(small, None)
 
+    def normalize_scale(self, img: np.ndarray) -> np.ndarray:
+        """해상도가 다른 스캔(예: 200dpi)도 템플릿 폭에 맞춰 키운다. 비율이 2% 이내면 그대로 둔다."""
+        ratio = self.width / img.shape[1]
+        if abs(ratio - 1) <= 0.02:
+            return img
+        interp = cv2.INTER_AREA if ratio < 1 else cv2.INTER_CUBIC
+        return cv2.resize(img, None, fx=ratio, fy=ratio, interpolation=interp)
+
     def align(self, img: np.ndarray) -> AlignResult:
         h, w = self.shape
+        img = self.normalize_scale(img)
         kp, des = self._features(img)
         H, inliers = None, 0
         if des is not None and len(kp) >= 10:
