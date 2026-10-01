@@ -1,0 +1,33 @@
+﻿id,field,auto_value,final_value
+sample_007,q1,만족,만족
+sample_007,q2,,보통
+sample_007,q3,그렇다,그렇다
+sample_007,q4,네,네
+sample_007,grade,5,5
+sample_007,kit_2,피노키오,피노키오
+sample_007,kit_3,스마트 워치,스마트 워치
+sample_007,q5,다음에도 하고 싶다.,다음에도 하고 싶다.
+sample_008,q1,매우 만족,매우 만족
+sample_008,q2,쉬웠다,쉬웠다
+sample_008,q3,,
+sample_008,q4,아니오,아니오
+sample_008,grade,5,5
+sample_008,kit_2,메롱하는 개구리,메롱하는 개구리
+sample_008,kit_3,메시지키링,메시지키링
+sample_008,q5,,
+sample_009,q1,,불만족
+sample_009,q2,보통,보통
+sample_009,q3,그렇다,그렇다
+sample_009,q4,네,네
+sample_009,grade,6,6
+sample_009,kit_2,마술봉,마술봉
+sample_009,kit_3,자벌래,자벌래
+sample_009,q5,시간이 부족했어요.,시간이 부족했어요.
+sample_011,q1,만족,만족
+sample_011,q2,쉬웠다,쉬웠다
+sample_011,q3,보통,보통
+sample_011,q4,,아니오
+sample_011,grade,4,4
+sample_011,kit_2,노래하는 케익,노래하는 케익
+sample_011,kit_3,인사하는 강아지,인사하는 강아지
+sample_011,q5,,
