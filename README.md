@@ -164,6 +164,7 @@ python -m unittest discover tests             # 샘플 기대 동작 + 키트명
 
 - [차기 설문지 양식 제안](docs/form_design_proposal.md): 이번 데이터에서 얻은 근거와 개선안
 - [양식·스캔 작성 가이드](docs/form_guidelines.md): 학생/교사용 작성 안내, 스캔 설정 권장
+- [이중 체크 판정 규칙](docs/double_check_rules.md): 검토자용 기준과 이번 검토의 집계
 - [양식 샘플(마크다운)](docs/form_sample.md): 제안 양식을 구글 독스 등에 붙여넣어 보존·편집하는 문서 (PDF: `templates/proposed_form.pdf`)
 - 스캔 품질 실험 재현: `python tools/scan_quality.py raw output/responses_final.csv`
 
