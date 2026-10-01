@@ -1,0 +1,18 @@
+# 원본 스캔·결과물(학생 실명 포함) — 절대 커밋 금지
+raw/
+output/
+out/
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
