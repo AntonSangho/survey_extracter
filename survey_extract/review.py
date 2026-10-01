@@ -60,7 +60,17 @@ def read_decisions(path: Path) -> dict[tuple[str, str], str]:
         return {(d["id"], d["field"]): d["final_value"] for d in csv.DictReader(f)}
 
 
-def export_xlsx(out_dir: Path, questions: list[dict], decisions_path: Path) -> dict:
+def read_links(path: Path) -> dict[str, str]:
+    """drive_links.csv(file,url) → {키: URL}. file은 상대경로 또는 파일명 모두 허용한다."""
+    with path.open(newline="", encoding="utf-8-sig") as f:
+        return {d["file"].strip(): d["url"].strip() for d in csv.DictReader(f) if d.get("file") and d.get("url")}
+
+
+def find_link(links: dict[str, str], file: str) -> str:
+    return links.get(file) or links.get(file.rsplit("/", 1)[-1]) or ""
+
+
+def export_xlsx(out_dir: Path, questions: list[dict], decisions_path: Path, links: dict[str, str] | None = None) -> dict:
     from openpyxl import Workbook
     from openpyxl.styles import Font
 
@@ -70,7 +80,8 @@ def export_xlsx(out_dir: Path, questions: list[dict], decisions_path: Path) -> d
     qids = [q["id"] for q in questions]
     final, pending, log = [], [], []
     for r in rows:
-        out = {"id": r["id"], "school": r["school"]}
+        out = {"id": r["id"], "school": r["school"], "file": r["file"],
+               "share_url": find_link(links, r["file"]) if links else ""}
         for f in qids + HW_FIELDS:
             auto = r[f]
             out[f] = dec.get((r["id"], f), auto)
@@ -86,10 +97,15 @@ def export_xlsx(out_dir: Path, questions: list[dict], decisions_path: Path) -> d
     wb = Workbook()
     ws = wb.active
     ws.title = "응답"
-    cols = ["id", "school"] + qids + HW_FIELDS + ["status"]
+    cols = ["id", "school", "file", "share_url"] + qids + HW_FIELDS + ["status"]
     ws.append(cols)
+    link_col = cols.index("share_url") + 1
     for o in final:
         ws.append([o[c] for c in cols])
+        if o["share_url"]:
+            cell = ws.cell(row=ws.max_row, column=link_col)
+            cell.hyperlink = o["share_url"]
+            cell.style = "Hyperlink"
     for c in ws[1]:
         c.font = Font(bold=True)
     ws.freeze_panes = "A2"
@@ -111,7 +127,12 @@ def export_xlsx(out_dir: Path, questions: list[dict], decisions_path: Path) -> d
         hist.append(row)
     path = out_dir / "responses_final.xlsx"
     wb.save(path)
-    return {"path": path, "rows": len(final), "pending": pending, "edited": sum(1 for r in log if r[4] == "수정")}
+    with (out_dir / "responses_final.csv").open("w", newline="", encoding="utf-8-sig") as f:
+        w = csv.DictWriter(f, fieldnames=cols)
+        w.writeheader()
+        w.writerows(final)
+    return {"path": path, "rows": len(final), "pending": pending, "edited": sum(1 for r in log if r[4] == "수정"),
+            "no_link": [o["file"] for o in final if links is not None and not o["share_url"]]}
 
 
 HTML = """<!doctype html>

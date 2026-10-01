@@ -19,7 +19,7 @@ from .align import Aligner
 from .crops import build_sheets, debug_overlay, save_crops
 from .imageio import find_images, load_gray, save_image
 from .layout import DEFAULT_LAYOUT, load_layout
-from .review import build_review, export_xlsx
+from .review import build_review, export_xlsx, read_links
 from .transcribe import merge, prompt_for
 
 HANDWRITING_FIELDS = ["grade", "kit_2", "kit_3", "q5"]
@@ -121,8 +121,12 @@ def cmd_review(args) -> int:
 
 def cmd_export(args) -> int:
     out = Path(args.output)
-    r = export_xlsx(out, load_layout(args.layout).questions, Path(args.decisions) if args.decisions else out / "review_decisions.csv")
-    print(f"저장: {r['path']} ({r['rows']}행, 검토 중 수정 {r['edited']}건)")
+    links = read_links(Path(args.links)) if args.links else None
+    r = export_xlsx(out, load_layout(args.layout).questions,
+                    Path(args.decisions) if args.decisions else out / "review_decisions.csv", links)
+    print(f"저장: {r['path']} 및 responses_final.csv ({r['rows']}행, 검토 중 수정 {r['edited']}건)")
+    if links is not None:
+        print(f"공유링크: {r['rows'] - len(r['no_link'])}/{r['rows']}행 연결" + (f", 링크 없음 {len(r['no_link'])}행" if r["no_link"] else ""))
     if r["pending"]:
         print(f"미검토 {len(r['pending'])}장: {', '.join(r['pending'][:10])}{' ...' if len(r['pending']) > 10 else ''}", file=sys.stderr)
         return 1
@@ -168,6 +172,7 @@ def main(argv: list[str] | None = None) -> int:
     x.add_argument("output", nargs="?", default="output")
     x.add_argument("--layout", default=DEFAULT_LAYOUT)
     x.add_argument("--decisions", help="review_decisions.csv 경로(기본: <출력폴더>/review_decisions.csv)")
+    x.add_argument("--links", help="드라이브 공유링크 매핑 CSV(열: file,url). file은 상대경로 또는 파일명")
     x.set_defaults(func=cmd_export)
 
     args = p.parse_args(argv)
