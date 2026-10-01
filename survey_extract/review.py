@@ -26,6 +26,7 @@ def needs_review(row: dict) -> bool:
 
 def build_review(out_dir: Path, questions: list[dict]) -> Path:
     items = []
+    prior = {i for i, _ in read_decisions(out_dir / "review_decisions.csv")}  # 이미 검토 기록이 있는 ID
     for r in read_rows(out_dir):
         fields = []
         for q in questions:
@@ -44,7 +45,8 @@ def build_review(out_dir: Path, questions: list[dict]) -> Path:
         orig = Path("originals") / f"{r['id']}.jpg"
         items.append({"id": r["id"], "school": r["school"], "file": r["file"],
                       "original": orig.as_posix() if (out_dir / orig).exists() else "", "debug": debug.as_posix() if (out_dir / debug).exists() else "",
-                      "omr_review": r["omr_status"] == "needs_review", "needs": needs_review(r), "fields": fields})
+                      "omr_review": r["omr_status"] == "needs_review", "needs": needs_review(r), "prior": r["id"] in prior,
+                      "q5": bool(r["q5"]), "fields": fields})
     path = out_dir / "review.html"
     path.write_text(HTML.replace("__DATA__", json.dumps({"items": items, "invalid": INVALID}, ensure_ascii=False)
                                  .replace("</", "<\\/")), encoding="utf-8")
@@ -130,7 +132,7 @@ textarea{width:100%;min-height:54px}input[type=text]{width:100%}.dbg{max-width:1
 .hint{font-size:12px;opacity:.7}input[type=search]{min-width:160px}@media (max-width:640px){.field{grid-template-columns:1fr}}
 </style></head><body>
 <header><b>설문 검토</b><span id="prog"></span>
-<select id="filter"><option value="todo">미검토만</option><option value="omr">체크박스 플래그</option><option value="all">전체</option></select>
+<select id="filter"><option value="todo">미검토만</option><option value="omr">체크박스 플래그</option><option value="q5">자유의견 미검토</option><option value="all">전체</option></select>
 <input id="q" type="search" placeholder="ID·파일명 검색" size="22">
 <button id="csv" class="primary">결과 CSV 다운로드</button>
 <span class="hint">j/k 이동 · Enter 확인하고 다음 · Esc 입력 해제</span></header>
@@ -141,7 +143,7 @@ let st={};try{st=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
 const $=s=>document.querySelector(s);let cur=0,shown=[];
 const val=(it,f)=>(st[it.id]&&st[it.id].v&&f.id in st[it.id].v)?st[it.id].v[f.id]:f.value;
-function visible(){const m=$("#filter").value,q=$("#q").value.trim().toLowerCase();return DATA.items.filter(it=>(!q||(it.id+it.file).toLowerCase().includes(q))&&(q||m==="all"||(m==="omr"?it.omr_review:it.needs&&!(st[it.id]&&st[it.id].done))))}
+function visible(){const m=$("#filter").value,q=$("#q").value.trim().toLowerCase();return DATA.items.filter(it=>(!q||(it.id+it.file).toLowerCase().includes(q))&&(q||m==="all"||(m==="omr"?it.omr_review:m==="q5"?it.q5&&!it.prior&&!(st[it.id]&&st[it.id].done):it.needs&&!(st[it.id]&&st[it.id].done))))}
 function render(){shown=visible();if(cur>=shown.length)cur=Math.max(0,shown.length-1);const done=DATA.items.filter(i=>st[i.id]&&st[i.id].done).length;
 $("#prog").textContent=`${done}/${DATA.items.length} 검토 완료`;const box=$("#list");box.innerHTML="";
 shown.forEach((it,idx)=>{const c=document.createElement("div");c.className="card"+(st[it.id]&&st[it.id].done?" done":"")+(idx===cur?" cur":"");c.id="c"+idx;
