@@ -9,6 +9,8 @@ import json
 from collections import Counter
 from pathlib import Path
 
+from .kits import load_kits, normalize_kit
+
 HW_FIELDS = ["grade", "kit_2", "kit_3", "q5"]
 HW_LABELS = {"grade": "학년", "kit_2": "2교시 키트", "kit_3": "3교시 키트", "q5": "5. 하고 싶은 말"}
 INVALID = "무효"
@@ -78,7 +80,8 @@ def export_xlsx(out_dir: Path, questions: list[dict], decisions_path: Path, link
     dec = read_decisions(decisions_path)
     reviewed_ids = {i for i, _ in dec}
     qids = [q["id"] for q in questions]
-    final, pending, log = [], [], []
+    kits = load_kits()
+    final, pending, log, kit_issues = [], [], [], []
     for r in rows:
         out = {"id": r["id"], "school": r["school"], "file": r["file"],
                "share_url": find_link(links, r["file"]) if links else ""}
@@ -87,6 +90,11 @@ def export_xlsx(out_dir: Path, questions: list[dict], decisions_path: Path, link
             out[f] = dec.get((r["id"], f), auto)
             if (r["id"], f) in dec:
                 log.append([r["id"], f, auto, out[f], "수정" if out[f] != auto else "확인"])
+        for k in ("kit_2", "kit_3"):
+            out[k + "_std"], state = normalize_kit(out[k], kits)
+            if state in ("unmatched", "ambiguous"):
+                kit_issues.append((r["id"], k, out[k]))
+        out["kit_check"] = "확인필요" if any(i[0] == r["id"] for i in kit_issues) else ""
         if needs_review(r) and r["id"] not in reviewed_ids:
             out["status"] = "needs_review"
             pending.append(r["id"])
@@ -97,7 +105,7 @@ def export_xlsx(out_dir: Path, questions: list[dict], decisions_path: Path, link
     wb = Workbook()
     ws = wb.active
     ws.title = "응답"
-    cols = ["id", "school", "file", "share_url"] + qids + HW_FIELDS + ["status"]
+    cols = ["id", "school", "file", "share_url"] + qids + ["grade", "kit_2", "kit_2_std", "kit_3", "kit_3_std", "kit_check", "q5", "status"]
     ws.append(cols)
     link_col = cols.index("share_url") + 1
     for o in final:
@@ -121,6 +129,25 @@ def export_xlsx(out_dir: Path, questions: list[dict], decisions_path: Path, link
             counts = Counter((o["school"], o[q["id"]]) for o in final)
             agg.append([lab or "(무응답)", sum(counts[(s, lab)] for s in schools)] + [counts[(s, lab)] for s in schools])
         agg.append([])
+    kit_ws = wb.create_sheet("키트")
+    kit_ws.append(["표준 키트명", "2교시", "3교시", "합계"] + schools)
+    for c in kit_ws[1]:
+        c.font = Font(bold=True)
+    def count(name: str, slot: str, school: str | None = None) -> int:
+        # 무응답("")은 표준명이 없고 원문도 비어 있는 경우만 센다(미분류와 구분).
+        return sum(1 for o in final if (school is None or o["school"] == school)
+                   and o[slot + "_std"] == name and (name or o[slot] == ""))
+
+    for name in list(kits) + [""]:
+        c2, c3 = count(name, "kit_2"), count(name, "kit_3")
+        kit_ws.append([name or "(무응답)", c2, c3, c2 + c3]
+                      + [count(name, "kit_2", sc) + count(name, "kit_3", sc) for sc in schools])
+    if kit_issues:
+        kit_ws.append([])
+        kit_ws.append(["표준명을 정하지 못한 값(검토 화면에서 고친 뒤 다시 export)"])
+        kit_ws.append(["id", "칸", "값"])
+        for row in kit_issues:
+            kit_ws.append(list(row))
     hist = wb.create_sheet("검토이력")
     hist.append(["id", "field", "자동값", "최종값", "구분"])
     for row in log:
@@ -132,7 +159,8 @@ def export_xlsx(out_dir: Path, questions: list[dict], decisions_path: Path, link
         w.writeheader()
         w.writerows(final)
     return {"path": path, "rows": len(final), "pending": pending, "edited": sum(1 for r in log if r[4] == "수정"),
-            "no_link": [o["file"] for o in final if links is not None and not o["share_url"]]}
+            "no_link": [o["file"] for o in final if links is not None and not o["share_url"]],
+            "kit_issues": kit_issues}
 
 
 HTML = """<!doctype html>
