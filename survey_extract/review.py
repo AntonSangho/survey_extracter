@@ -69,7 +69,19 @@ def read_links(path: Path) -> dict[str, str]:
 
 
 def find_link(links: dict[str, str], file: str) -> str:
-    return links.get(file) or links.get(file.rsplit("/", 1)[-1]) or ""
+    """상대경로 → 파일명 → 확장자 뺀 이름 순으로 찾는다(드라이브에 jpg 사본을 올려도 매칭되도록)."""
+    name = file.rsplit("/", 1)[-1]
+    stem = name.rsplit(".", 1)[0]
+    by_stem = {k.rsplit("/", 1)[-1].rsplit(".", 1)[0]: v for k, v in links.items()}
+    return links.get(file) or links.get(name) or by_stem.get(stem, "")
+
+
+def read_corrections(path: Path) -> dict[tuple[str, str], str]:
+    """corrections.csv(id,field,value): 검토 결과 위에 덮어쓰는 수동 보정. 빈 value는 '비움'을 뜻한다."""
+    if not path.exists():
+        return {}
+    with path.open(newline="", encoding="utf-8-sig") as f:
+        return {(d["id"], d["field"]): d["value"] for d in csv.DictReader(f)}
 
 
 def export_xlsx(out_dir: Path, questions: list[dict], decisions_path: Path, links: dict[str, str] | None = None) -> dict:
@@ -78,6 +90,7 @@ def export_xlsx(out_dir: Path, questions: list[dict], decisions_path: Path, link
 
     rows = read_rows(out_dir)
     dec = read_decisions(decisions_path)
+    corr = read_corrections(out_dir / "corrections.csv")
     reviewed_ids = {i for i, _ in dec}
     qids = [q["id"] for q in questions]
     kits = load_kits()
@@ -90,6 +103,9 @@ def export_xlsx(out_dir: Path, questions: list[dict], decisions_path: Path, link
             out[f] = dec.get((r["id"], f), auto)
             if (r["id"], f) in dec:
                 log.append([r["id"], f, auto, out[f], "수정" if out[f] != auto else "확인"])
+            if (r["id"], f) in corr:
+                log.append([r["id"], f, out[f], corr[(r["id"], f)], "보정"])
+                out[f] = corr[(r["id"], f)]
         for k in ("kit_2", "kit_3"):
             out[k + "_std"], state = normalize_kit(out[k], kits)
             if state in ("unmatched", "ambiguous"):
