@@ -145,6 +145,12 @@ def export_xlsx(out_dir: Path, questions: list[dict], decisions_path: Path, link
             counts = Counter((o["school"], o[q["id"]]) for o in final)
             agg.append([lab or "(무응답)", sum(counts[(s, lab)] for s in schools)] + [counts[(s, lab)] for s in schools])
         agg.append([])
+    invalid = [(o["id"], q, o["file"], o["share_url"]) for o in final for q in qids if o[q] == INVALID]
+    if invalid:  # 무효 판정은 담당자에게 검토를 요청한다
+        req = wb.create_sheet("검토요청")
+        req.append(["id", "문항", "원본 파일", "공유링크", "사유"])
+        for row in invalid:
+            req.append(list(row) + ["무효 판정(두 칸 이상 의도적 표시)"])
     kit_ws = wb.create_sheet("키트")
     kit_ws.append(["표준 키트명", "2교시", "3교시", "합계"] + schools)
     for c in kit_ws[1]:
@@ -176,7 +182,7 @@ def export_xlsx(out_dir: Path, questions: list[dict], decisions_path: Path, link
         w.writerows(final)
     return {"path": path, "rows": len(final), "pending": pending, "edited": sum(1 for r in log if r[4] == "수정"),
             "no_link": [o["file"] for o in final if links is not None and not o["share_url"]],
-            "kit_issues": kit_issues}
+            "kit_issues": kit_issues, "invalid": invalid}
 
 
 HTML = """<!doctype html>

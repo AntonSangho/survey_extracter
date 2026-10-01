@@ -127,6 +127,8 @@ def cmd_export(args) -> int:
     print(f"저장: {r['path']} 및 responses_final.csv ({r['rows']}행, 검토 중 수정 {r['edited']}건)")
     if links is not None:
         print(f"공유링크: {r['rows'] - len(r['no_link'])}/{r['rows']}행 연결" + (f", 링크 없음 {len(r['no_link'])}행" if r["no_link"] else ""))
+    if r["invalid"]:
+        print(f"무효 판정 {len(r['invalid'])}건 — '검토요청' 시트 참고: " + ", ".join(f"{i[-8:]}/{q}" for i, q, *_ in r["invalid"][:10]))
     for rid, k, v in r["kit_issues"]:
         print(f"키트명 확인 필요: {rid} {k}='{v.strip()}'", file=sys.stderr)
     if r["pending"]:
