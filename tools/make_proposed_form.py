@@ -2,7 +2,7 @@
 
     python tools/make_proposed_form.py templates/proposed_form.pdf [--school "OO초등학교"]
 
-개선점: 코너 ArUco 마커(방향·정합 자동화), 학교/회차 QR(사전 인쇄), 학교·학년·키트명은 선택식,
+개선점: 코너 ArUco 마커(방향·정합 자동화), 학교명 사전 인쇄(오프라인 진행이라 QR 없음), 학년·키트명은 선택식,
 칠하는 원형 버블, 자유의견은 테두리 박스, 작성/수정 규칙 안내.
 """
 
@@ -42,14 +42,6 @@ def aruco_image(marker_id: int) -> ImageReader:
     return ImageReader(Image.fromarray(m))
 
 
-def qr_image(payload: str) -> ImageReader:
-    enc = cv2.QRCodeEncoder.create()
-    q = enc.encode(payload)
-    q = cv2.copyMakeBorder(q, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=255)
-    q = cv2.resize(q, None, fx=4, fy=4, interpolation=cv2.INTER_NEAREST)
-    return ImageReader(Image.fromarray(q))
-
-
 def bubble(c: canvas.Canvas, x: float, y: float, label: str, size: float = 10.5, num: bool = False):
     c.setLineWidth(1.0)
     c.circle(x, y, R, stroke=1, fill=0)
@@ -63,20 +55,19 @@ def draw(path: Path, school: str) -> None:
     c = canvas.Canvas(str(path), pagesize=(W, H))
     c.setTitle("차기 설문지 양식 제안안")
 
-    # 네 모서리 마커(ID 0~3: 좌상, 우상, 좌하, 우하)와 학교/회차 QR
+    # 네 모서리 마커(ID 0~3: 좌상, 우상, 좌하, 우하)
     ms = 12 * mm
     for i, (mx, my) in enumerate([(6 * mm, H - 6 * mm - ms), (W - 6 * mm - ms, H - 6 * mm - ms),
                                   (6 * mm, 6 * mm), (W - 6 * mm - ms, 6 * mm)]):
         c.drawImage(aruco_image(i), mx, my, ms, ms)
-    c.drawImage(qr_image(f"survey2026|school={school}|form=v2"), W - 48 * mm, H - 33 * mm, 20 * mm, 20 * mm)
 
     c.setFont("GothicB", 15)
-    c.drawCentredString(W / 2 - 8 * mm, H - 18 * mm, "2026년 학교로 찾아가는 피지컬AI 융합 체험 프로그램 만족도 조사")
+    c.drawCentredString(W / 2, H - 18 * mm, "2026년 학교로 찾아가는 피지컬AI 융합 체험 프로그램 만족도 조사")
     c.setFont("Gothic", 11)
     c.drawString(24 * mm, H - 27 * mm, f"학교: {school}")
     c.setFont("Gothic", 8)
     c.setFillColor(GRAY)
-    c.drawString(24 * mm, H - 32 * mm, "(학교·회차는 사전 인쇄 · QR로 자동 인식)")
+    c.drawString(24 * mm, H - 32 * mm, "(학교명은 사전 인쇄)")
     c.setFillColor(black)
 
     # 작성 방법 안내 박스

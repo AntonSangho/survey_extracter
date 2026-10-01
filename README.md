@@ -164,13 +164,14 @@ python -m unittest discover tests             # 샘플 기대 동작 + 키트명
 
 - [차기 설문지 양식 제안](docs/form_design_proposal.md): 이번 데이터에서 얻은 근거와 개선안
 - [양식·스캔 작성 가이드](docs/form_guidelines.md): 학생/교사용 작성 안내, 스캔 설정 권장
+- [양식 샘플(마크다운)](docs/form_sample.md): 제안 양식을 구글 독스 등에 붙여넣어 보존·편집하는 문서 (PDF: `templates/proposed_form.pdf`)
 - 스캔 품질 실험 재현: `python tools/scan_quality.py raw output/responses_final.csv`
 
 ## 폴더 구조
 
 ```
 survey_extract/   파이프라인(align, omr, crops, transcribe, review, kits, cli)
-tools/            샘플·벤치마크·스캔 품질 실험·양식 PDF 생성
+tools/            샘플·벤치마크·스캔 품질 실험·양식 PDF/마크다운 생성
 tests/            샘플/키트명 테스트
 samples/          합성 스캔, 정답표, 기대 출력
 docs/             설계 제안, 가이드
