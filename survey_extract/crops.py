@@ -1,5 +1,6 @@
 """손글씨 영역 크롭, 판독용 묶음 시트, 디버그 오버레이."""
 
+import json
 from pathlib import Path
 
 import cv2
@@ -72,20 +73,30 @@ def build_sheets(out_dir: Path, rows: list[dict], fields: list[dict], per_sheet:
         "header": [f for f in fields if f["id"] != "q5"],
         "q5": [f for f in fields if f["id"] == "q5"],
     }
-    sheets = []
+    sheets, manifest = [], {}
     for gname, gfields in groups.items():
         if not gfields:
             continue
         todo = [r for r in rows if not all(r[f"blank_{f['id']}"] for f in gfields)]
-        lines, page = [], 1
+        lines, ids, page = [], [], 1
+        fids = [f["id"] for f in gfields]
+
+        def flush():
+            path = _save_sheet(out_dir, gname, page, lines)
+            sheets.append(path)
+            manifest[path.stem] = {"fields": fids, "ids": list(ids)}
+
         for r in todo:
             line = _sheet_row(out_dir, r, gfields)
             if lines and (len(lines) >= per_sheet or sum(l.shape[0] for l in lines) + line.shape[0] > SHEET_MAX_H):
-                sheets.append(_save_sheet(out_dir, gname, page, lines))
-                lines, page = [], page + 1
+                flush()
+                lines, ids, page = [], [], page + 1
             lines.append(line)
+            ids.append(r["id"])
         if lines:
-            sheets.append(_save_sheet(out_dir, gname, page, lines))
+            flush()
+    (out_dir / "sheets" / "manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
     return sheets
 
 
@@ -103,7 +114,7 @@ def _sheet_row(out_dir: Path, row: dict, fields: list[dict]) -> np.ndarray:
     crops = [cv2.resize(c, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA) for c in crops]
     h = max(c.shape[0] for c in crops) + 8
     canvas = np.full((h, SHEET_WIDTH), 255, np.uint8)
-    cv2.putText(canvas, row["id"], (6, h // 2 + 8), cv2.FONT_HERSHEY_SIMPLEX, 0.75, 0, 2)
+    cv2.putText(canvas, row["id"][-8:], (6, h // 2 + 8), cv2.FONT_HERSHEY_SIMPLEX, 0.75, 0, 2)
     x = LABEL_W
     for c in crops:
         canvas[4 : 4 + c.shape[0], x : x + c.shape[1]] = c
